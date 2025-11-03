@@ -25,13 +25,21 @@ service = build('sheets', 'v4', credentials=creds)
 
 # Call the Sheets API
 sheet = service.spreadsheets()
+
 current_line_count = 0
+try:
+    response = (sheet.values().batchGet(spreadsheetId=Config.SPREADSHEET_ID,
+                                    ranges="C2").execute())['valueRanges'][0]
+    current_line_count = int(response['values'][0][0])
+except:
+    print("Couldn't find current line count in sheet, defaulting to 0")
 
 while True:
     with open(Config.FILENAME, "r", encoding="utf-8") as f:
         lines = f.readlines()
         n = len(lines)
         if n != current_line_count:
+            print("Updating sheet")
             response = (sheet.values().batchGet(spreadsheetId=Config.SPREADSHEET_ID,
                                     ranges="A2:B", majorDimension='ROWS').execute())['valueRanges'][0]
             amounts = {}
@@ -60,4 +68,8 @@ while True:
                 }
             }
             sheet.values().batchUpdate(spreadsheetId=Config.SPREADSHEET_ID, body=value_range).execute()
+            sheet.values().update(spreadsheetId=Config.SPREADSHEET_ID, range="C2", valueInputOption="RAW", body = {
+                "range" : "C2",
+                "values" : [[current_line_count]]
+            }).execute()
     time.sleep(30)
